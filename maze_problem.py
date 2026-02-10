@@ -267,3 +267,23 @@ if __name__ == "__main__":
         positions, actions_taken = result_data
         print("Ruta encontrada (posiciones):", positions)
         print("Acciones tomadas:", actions_taken)
+
+"""
+RESPUESTA PUNTO 1
+
+¿Cómo cambia el comportamiento del algoritmo si cambiamos la función de costo?
+
+Cuando todas las acciones tienen el mismo costo (1), el algoritmo tiende a buscar
+rutas con menor número de movimientos, y la heurística (Manhattan o Euclidiana)
+es la que principalmente guía la exploración.
+
+Si la función de costo se modifica para que algunos movimientos sean más costosos
+que otros (por ejemplo, terrenos difíciles), el algoritmo deja de optimizar solo
+la cantidad de pasos y comienza a optimizar el costo total del recorrido.
+
+En este caso, el algoritmo puede preferir rutas más largas en número de pasos,
+pero más económicas en costo, evitando zonas con mayor penalización.
+
+Esto permite modelar escenarios más realistas, donde no todos los movimientos
+tienen el mismo impacto.
+"""
