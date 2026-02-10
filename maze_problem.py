@@ -1,137 +1,269 @@
+"""
+AQUÍ VA EL ENUNCIADO COMPLETO DEL WORD (PEGADO COMO COMENTARIO MULTILÍNEA)
+Pégalo completo tal como te lo dieron en el documento.
+"""
+
+import heapq  # Cola de prioridad
+import math   # Para sqrt en distancia euclidiana
+
+
 # ============================================================
-# Maze_problem.ipynb (CÓDIGO BASE DEL PROFESOR)
-# NO MODIFICADO: solo con comentarios/pistas resaltadas
+# CÓDIGO ORIGINAL DEL PROFESOR (NO SE MODIFICA)
+# Lo dejamos comentado para mantener la integridad del código base.
 # ============================================================
 
-import heapq  # El módulo heapq implementa colas de prioridad (heaps)
+# (Aquí puedes pegar el código original si tu profesor exige verlo completo en el archivo)
 
+
+# ============================================================
+# SOLUCIÓN FUNCIONAL BASADA EN LA GUÍA (BestFirstSearch.ipynb)
+# ============================================================
 
 class Node:
-    def __init__(self, position, parent=None, path_cost=0):  # TODO (PROF): AGREGAR ACTION
-        # position: la coordenada (x, y) o (fila, columna) del robot en el maze
-        self.position = position
+    """
+    Nodo de búsqueda (como en el ejemplo del profe).
 
-        # parent: referencia al nodo anterior (sirve para reconstruir el camino)
+    state      -> posición del robot (fila, columna)
+    parent     -> nodo anterior (para reconstruir el camino)
+    action     -> acción tomada para llegar aquí (UP/DOWN/LEFT/RIGHT)
+    path_cost  -> costo acumulado desde el inicio
+    """
+
+    def __init__(self, state, parent=None, action=None, path_cost=0):
+        self.state = state
         self.parent = parent
-
-        # path_cost: costo acumulado hasta llegar a este nodo
+        self.action = action
         self.path_cost = path_cost
 
-        # TODO (PROF): AGREGAR ACTION
-        # Te falta guardar la acción tomada para llegar a este nodo:
-        # por ejemplo: "UP", "DOWN", "LEFT", "RIGHT"
-        # Esto permite luego "trackear" movimientos al reconstruir el camino.
-
     def __lt__(self, other):
-        # Esto define cómo se comparan dos nodos en el heap.
-        # Actualmente compara por path_cost.
+        # Comparación simple (el heap realmente usa la prioridad f)
         return self.path_cost < other.path_cost
 
 
 class Problem:
-    # TODO (PROF): DEFINA la Class problem como lo considere necesario,
-    # puede basarse del ejemplo de Bucharest.
-    #
-    # Esta clase debería (según el enunciado) representar la estructura del problema:
-    # - state (la posición del robot)
-    # - actions(state)
-    # - result(state, action)
-    # - action_cost(state, action, next_state)
-    #
-    # En el código base AÚN NO ESTÁ DEFINIDA.
-    pass
+    """
+    Estructura del problema (como Bucharest).
+
+    initial: estado inicial
+    goal: meta
+    actions(state): acciones válidas desde state
+    result(state, action): nuevo estado
+    action_cost(state, action, next_state): costo del movimiento
+    is_goal(state): True si state es meta
+    """
+
+    def __init__(self, initial, goal, actions, result, action_cost, is_goal):
+        self.initial = initial
+        self.goal = goal
+        self.actions = actions
+        self.result = result
+        self.action_cost = action_cost
+        self.is_goal = is_goal
 
 
-def find_exit(maze):
-    start = (1, 1)  # Posición inicial basado en la documentación suministrada
-    end = (1, 6)    # Posición de la salida basado en la documentación suministrada
+def expand(problem, node):
+    """
+    Genera hijos del nodo (igual que el ejemplo del profe).
+    """
+    s = node.state
+    for action in problem.actions(s):
+        s_prime = problem.result(s, action)
+        new_cost = node.path_cost + problem.action_cost(s, action, s_prime)
+        yield Node(state=s_prime, parent=node, action=action, path_cost=new_cost)
 
-    # TODO (PROF): DEFINA el conjunto de actions posibles
-    # Pista del enunciado: (Up, Down, Right, Left) NO diagonales.
-    # Normalmente se define algo como:
-    # actions = { (delta_x, delta_y): "NOMBRE_ACCION" } o similar.
 
-    problem = Problem()  # TODO (PROF): COMPLETE LA DEFINICIÓN DEL OBJETO
-    # También: ADAPTELO EN LOS PUNTOS QUE LO REQUIERAN.
+def best_first_search(problem, f):
+    """
+    Best-First Search genérico (estructura del ejemplo del profe).
+    Nosotros usaremos f = g + h para comportarse como A*.
+    """
+    start_node = Node(state=problem.initial)
 
-    def manhatan_distance(pos, goal):
-        # Heurística Manhattan: distancia usando movimiento horizontal/vertical
-        return abs(pos[0] - goal[0]) + abs(pos[1] - goal[1])
+    frontier = [(f(start_node), start_node)]  # (prioridad, nodo)
+    heapq.heapify(frontier)
 
-    def get_neighbors(pos):
-        # TODO (PROF): ESTA FUNCIÓN DEBERIA AJUSTARSE PARA HACER TRACKING DE MOVIMIENTOS
-        # (Up, Down, Right, Left)
-        #
-        # En el código actual, solo devuelve posiciones vecinas, pero no registra
-        # cuál acción llevó a cada vecino.
-        neighbors = []
-        for move in [x for x in problem.actions.keys()]:
-            # Nota: esto asume que problem.actions existe y es un diccionario
-            # donde las llaves son movimientos (dx, dy) o similares.
-            neighbor = (pos[0] + move[0], pos[1] + move[1])
-            if maze[neighbor[0]][neighbor[1]] != "#":
-                # Si el vecino NO es pared, lo agrega
-                # (Aquí el notebook original tiene un problema de indentación / duplicación)
-                neighbors.append(neighbor)
-              neighbors.append(neighbor)  # <- esta línea está tal cual en el original (ojo: indentación)
-        return neighbors
-
-    start_node = Node(start, path_cost=0)
-
-    # OJO: aquí se usa "goal" pero arriba se definió "end".
-    # En el notebook original aparece así.
-    frontier = [(manhatan_distance(start, goal), start_node)]
-
-    heapq.heapify(frontier)  # Convierte frontier en una cola de prioridad (heap)
-    reached = {start: start_node}
+    reached = {problem.initial: start_node}
 
     while frontier:
         _, node = heapq.heappop(frontier)
 
-        # OJO: aquí también se usa "goal" (no definido arriba en el original)
-        if node.position == goal:
-            return reconstruct_path(node)
+        if problem.is_goal(node.state):
+            return node
 
-        for neighbor in get_neighbors(node.position):
-            new_cost = node.path_cost + 1  # costo uniforme de 1 por movimiento (según enunciado)
+        for child in expand(problem, node):
+            s = child.state
+            if s not in reached or child.path_cost < reached[s].path_cost:
+                reached[s] = child
+                heapq.heappush(frontier, (f(child), child))
 
-            if neighbor not in reached or new_cost < reached[neighbor].path_cost:
-                reached[neighbor] = Node(neighbor, parent=node, path_cost=new_cost)
+    return None
 
-                # aquí se usa "end" (sí existe arriba)
-                heapq.heappush(frontier, (manhatan_distance(neighbor, end), reached[neighbor]))
 
-    return None  # No se encontró salida
+# ------------------------------------------------------------
+# Funciones del MAZE
+# ------------------------------------------------------------
+
+def find_start_and_goal(maze):
+    """
+    Busca "S" y "E" en el maze.
+    """
+    start = None
+    goal = None
+
+    for r in range(len(maze)):
+        for c in range(len(maze[0])):
+            if maze[r][c] == "S":
+                start = (r, c)
+            elif maze[r][c] == "E":
+                goal = (r, c)
+
+    return start, goal
+
+
+def manhattan_distance(a, b):
+    """
+    Distancia Manhattan: buena para movimientos ortogonales.
+    """
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def euclidean_distance(a, b):
+    """
+    Distancia Euclidiana: línea recta.
+    """
+    return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
 
 
 def reconstruct_path(node):
-    # TODO (PROF): AJUSTAR PARA QUE, ADEMÁS DE POSICIONES, MUESTRE ACCIONES TOMADAS
-    #
-    # Actualmente reconstruye solo lista de posiciones usando "parent".
-    # Para acciones necesitas que Node guarde "action" (ver TODO en Node).
-    path = []
-    while node:
-        path.append(node.position)
-        node = node.parent
-    path.reverse()
-    return path
+    """
+    Reconstruye posiciones y acciones desde la meta hasta el inicio.
+    """
+    positions = []
+    actions = []
+
+    current = node
+    while current is not None:
+        positions.append(current.state)
+        if current.action is not None:
+            actions.append(current.action)
+        current = current.parent
+
+    positions.reverse()
+    actions.reverse()
+    return positions, actions
+
+
+def find_exit(maze, heuristic_type="manhattan"):
+    """
+    Resuelve el laberinto usando best_first_search con f = g + h.
+    """
+    start, goal = find_start_and_goal(maze)
+    if start is None or goal is None:
+        return None
+
+    # Movimientos permitidos (sin diagonales)
+    moves = {
+        "UP": (-1, 0),
+        "DOWN": (1, 0),
+        "LEFT": (0, -1),
+        "RIGHT": (0, 1),
+    }
+
+    def actions(state):
+        """
+        Devuelve acciones válidas desde state.
+        """
+        r, c = state
+        possible = []
+
+        # Recorremos el diccionario moves:
+        # name = "UP", "DOWN", ...
+        # (dr, dc) = (-1,0), (1,0), ...
+        for name, (dr, dc) in moves.items():
+            nr, nc = r + dr, c + dc
+
+            # Validar límites
+            if nr < 0 or nr >= len(maze) or nc < 0 or nc >= len(maze[0]):
+                continue
+
+            # Validar pared
+            if maze[nr][nc] == "#":
+                continue
+
+            possible.append(name)
+
+        return possible
+
+    def result(state, action):
+        """
+        Aplica la acción y devuelve el nuevo estado.
+        """
+        r, c = state
+        dr, dc = moves[action]
+        return (r + dr, c + dc)
+
+    def action_cost(state, action, next_state):
+        """
+        Según el enunciado: todas las acciones cuestan 1.
+        """
+        return 1
+
+    def is_goal(state):
+        """
+        True si llegamos a la salida.
+        """
+        return state == goal
+
+    def h(state):
+        """
+        Heurística: Manhattan o Euclidiana.
+        """
+        if heuristic_type == "euclidean":
+            return euclidean_distance(state, goal)
+        return manhattan_distance(state, goal)
+
+    def f(node):
+        """
+        f(n) = g(n) + h(n)
+        g(n) = node.path_cost
+        """
+        return node.path_cost + h(node.state)
+
+    problem = Problem(
+        initial=start,
+        goal=goal,
+        actions=actions,
+        result=result,
+        action_cost=action_cost,
+        is_goal=is_goal
+    )
+
+    solution_node = best_first_search(problem, f)
+    if solution_node is None:
+        return None
+
+    return reconstruct_path(solution_node)
 
 
 # ============================================================
-# Ejecución (tal cual venía en el notebook)
+# Prueba rápida
 # ============================================================
 
-maze = [
-    ["#", "#", "#", "#", "#", "#", "#", "#"],
-    ["#", "S", "#", " ", "#", " ", "E", "#"],
-    ["#", " ", " ", " ", "#", " ", " ", "#"],
-    ["#", " ", "#", " ", " ", " ", "#", "#"],
-    ["#", "#", "#", "#", "#", "#", "#", "#"],
-    ["#", "#", "#", "#", "#", "#", "#", "#"]
-]
+if __name__ == "__main__":
+    maze = [
+        ["#", "#", "#", "#", "#", "#", "#", "#"],
+        ["#", "S", "#", " ", "#", " ", "E", "#"],
+        ["#", " ", " ", " ", "#", " ", " ", "#"],
+        ["#", " ", "#", " ", " ", " ", "#", "#"],
+        ["#", "#", "#", "#", "#", "#", "#", "#"],
+        ["#", "#", "#", "#", "#", "#", "#", "#"]
+    ]
 
-path = find_exit(maze)
-if path:
-    print("Ruta encontrada:", path)
-else:
-    print("No se encontró una ruta a la salida.")
+    result_data = find_exit(maze, heuristic_type="manhattan")
+
+    if result_data is None:
+        print("No se encontró una ruta a la salida.")
+    else:
+        positions, actions_taken = result_data
+        print("Ruta encontrada (posiciones):", positions)
+        print("Acciones tomadas:", actions_taken)
