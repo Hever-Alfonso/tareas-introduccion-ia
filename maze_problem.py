@@ -287,3 +287,137 @@ pero más económicas en costo, evitando zonas con mayor penalización.
 Esto permite modelar escenarios más realistas, donde no todos los movimientos
 tienen el mismo impacto.
 """
+
+"""
+RESPUESTA PUNTO 2(b) - MÚLTIPLES SALIDAS
+
+(b) Para manejar múltiples salidas, la condición de meta (is_goal) debe cambiar.
+
+Antes:
+- El algoritmo solo tenía una salida (goal) y verificaba:
+  is_goal(state) -> state == goal
+
+Problema:
+- Si hay varias 'E' en el laberinto, el algoritmo podría ignorar salidas más cercanas
+  porque solo está comparando contra una única meta.
+
+Solución (2b):
+- Guardar todas las salidas en una lista llamada goals.
+- Cambiar is_goal(state) para que sea True si el estado actual está en esa lista:
+
+  is_goal(state) -> state in goals
+
+Con esto, el algoritmo termina cuando llega a CUALQUIERA de las salidas.
+"""
+
+# ============================================================
+# PUNTO 2(b) - CÓDIGO PARA MÚLTIPLES SALIDAS (SIN REEMPLAZAR LO ANTERIOR)
+# Se agrega como una "versión nueva" para mantener secuencia y entender cambios.
+# ============================================================
+
+def find_start_and_goals(maze):
+    """
+    Encuentra:
+    - start: posición de 'S'
+    - goals: lista con TODAS las posiciones de 'E'
+    """
+    start = None
+    goals = []
+
+    for r in range(len(maze)):
+        for c in range(len(maze[0])):
+            if maze[r][c] == "S":
+                start = (r, c)
+            elif maze[r][c] == "E":
+                goals.append((r, c))
+
+    return start, goals
+
+
+def find_exit_multi(maze, heuristic_type="manhattan"):
+    """
+    Versión alternativa para múltiples salidas (Punto 2(b)).
+
+    Nota:
+    - En esta versión, el cambio clave es is_goal(state) -> state in goals.
+    - Por ahora, la heurística se calcula usando SOLO la primera salida goals[0],
+      porque el ajuste de la heurística a "salida más cercana" corresponde al punto 2(c).
+    """
+
+    start, goals = find_start_and_goals(maze)
+
+    # Validación mínima: debe existir inicio y al menos una salida
+    if start is None or len(goals) == 0:
+        return None
+
+    # Se usa la primera salida solo para la heurística (temporal, hasta hacer 2(c))
+    goal_for_heuristic = goals[0]
+
+    moves = {
+        "UP": (-1, 0),
+        "DOWN": (1, 0),
+        "LEFT": (0, -1),
+        "RIGHT": (0, 1),
+    }
+
+    def actions(state):
+        r, c = state
+        possible = []
+
+        for name, (dr, dc) in moves.items():
+            nr, nc = r + dr, c + dc
+
+            if nr < 0 or nr >= len(maze) or nc < 0 or nc >= len(maze[0]):
+                continue
+
+            if maze[nr][nc] == "#":
+                continue
+
+            possible.append(name)
+
+        return possible
+
+    def result(state, action):
+        r, c = state
+        dr, dc = moves[action]
+        return (r + dr, c + dc)
+
+    def action_cost(state, action, next_state):
+        return 1
+
+    # --------------------------------------------------------
+    # CAMBIO CLAVE PUNTO 2(b):
+    # antes: return state == goal
+    # ahora: return state in goals
+    # --------------------------------------------------------
+    def is_goal(state):
+        return state in goals
+
+    def h(state):
+        # Heurística temporal a una sola meta (se mejora en 2(c))
+        if heuristic_type == "euclidean":
+            return euclidean_distance(state, goal_for_heuristic)
+        return manhattan_distance(state, goal_for_heuristic)
+
+    def f(node):
+        return node.path_cost + h(node.state)
+
+    problem = Problem(
+        initial=start,
+        goal=goal_for_heuristic,  # goal aquí no se usa para is_goal, solo se mantiene por estructura
+        actions=actions,
+        result=result,
+        action_cost=action_cost,
+        is_goal=is_goal
+    )
+
+    solution_node = best_first_search(problem, f)
+
+    if solution_node is None:
+        return None
+
+    return reconstruct_path(solution_node)
+
+# Prueba rápida de múltiples salidas (Punto 2b)
+result_multi = find_exit_multi(maze, heuristic_type="manhattan")
+print("Resultado múltiples salidas (2b):", result_multi)
